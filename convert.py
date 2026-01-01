@@ -3,17 +3,48 @@ import json
 import sys
 import zipfile
 from shutil import rmtree
-from msvcrt import getch
-import ctypes
 import traceback
 from datetime import datetime
+import platform
+
+# 跨平台 getch 实现
+def getch():
+    """跨平台获取单个按键输入"""
+    if platform.system() == 'Windows':
+        import msvcrt
+        return msvcrt.getch()
+    else:
+        # Unix/Linux/macOS
+        import sys
+        # 检查 stdin 是否是终端
+        if not sys.stdin.isatty():
+            # 非终端环境（如管道、IDE），直接读取一行并返回第一个字符
+            line = sys.stdin.readline()
+            return line[0].encode() if line else b'\n'
+        try:
+            import tty
+            import termios
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setraw(sys.stdin.fileno())
+                ch = sys.stdin.read(1)
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            return ch.encode()
+        except (termios.error, AttributeError):
+            # 如果 termios 失败，回退到普通输入
+            return input()[0].encode() if input() else b'\n'
 
 lastfile = "N/A"
-version = "Final"
-date = "November 5th, 2019"
+version = "2"
+date = "January 1, 2026"
 
 try:
-    ctypes.windll.kernel32.SetConsoleTitleW(f"Malody to osu!mania Converter v{version}") #https://stackoverflow.com/questions/7387276
+    # 设置控制台标题（仅Windows）
+    if platform.system() == 'Windows':
+        import ctypes
+        ctypes.windll.kernel32.SetConsoleTitleW(f"Malody to osu!mania Converter v{version}")
     
     if getattr(sys, 'frozen', False):
         os.chdir(os.path.dirname(sys.executable))
@@ -21,7 +52,8 @@ try:
         
     print(f"Malody to osu!mania Converter v{version}")
     print(date)
-    print("by Jakads\n\n")
+    print("original by Jakads\n")
+    print("modified by Eric Zhao using Claude Opus 4.5\n")
     
     def choose():
         choice = getch().decode()
@@ -151,9 +183,9 @@ try:
         artistorg = meta['song'].get('artistorg',artist)
     
         background = meta["background"]
-        if not background=="": bgtmp.append(f'{os.path.dirname(i)}\\{background}')
+        if not background=="": bgtmp.append(os.path.join(os.path.dirname(i), background))
         sound = soundnote["sound"]
-        if not sound=="": soundtmp.append(f'{os.path.dirname(i)}\\{sound}')
+        if not sound=="": soundtmp.append(os.path.join(os.path.dirname(i), sound))
         creator = meta["creator"]
         version = meta["version"]
 
@@ -266,7 +298,25 @@ try:
                         osu.write('{0}:{1}'.format(n['vol'],n['sound'].replace('"','')))
         return 0
     
+    def sanitize_filename(filename):
+        """移除或替换文件名中的非法字符"""
+        # Linux和Windows都不允许的字符
+        invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '\0']
+        for char in invalid_chars:
+            filename = filename.replace(char, '_')
+        # 移除首尾空格和点
+        filename = filename.strip(' .')
+        return filename if filename else "unknown"
+    
     def compress(compressname, name, bglist, soundlist):
+        # 分离目录和文件名，只清理文件名部分
+        dir_part = os.path.dirname(compressname)
+        name_part = os.path.basename(compressname)
+        name_part = sanitize_filename(name_part)
+        if dir_part:
+            compressname = os.path.join(dir_part, name_part)
+        else:
+            compressname = name_part
         osz = zipfile.ZipFile(f'{compressname}.osz','w')
     
         for i in name:
@@ -406,13 +456,19 @@ try:
     print('\n\n\n(i) Compressing  . . .\n')
     #Compress to .osz (dragged .mc files as single mapset)
     if MCDragged:
-        compress(f'{mcartist} - {mctitle}', mcname[0], set(bglist[0]), set(soundlist[0]))
+        # 输出到第一个 mc 文件所在的目录
+        output_dir = os.path.dirname(mcname[0][0]) if mcname[0] else '.'
+        output_path = os.path.join(output_dir, f'{mcartist} - {mctitle}')
+        compress(output_path, mcname[0], set(bglist[0]), set(soundlist[0]))
     
     if ZIPDragged:
         i = 1 if MCDragged else 0
         for folder in zipname:
             print(f'\n(i) Compressing {os.path.basename(folder)} . . .\n')
-            compress(f'{os.path.basename(folder)}', mcname[i], set(bglist[i]), set(soundlist[i]))
+            # 输出到原始 mcz/zip 文件所在的目录（即解压目录的父目录）
+            output_dir = os.path.dirname(folder)
+            output_path = os.path.join(output_dir, os.path.basename(folder))
+            compress(output_path, mcname[i], set(bglist[i]), set(soundlist[i]))
             i+=1
             rmtree(folder)
     
