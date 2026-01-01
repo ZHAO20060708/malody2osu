@@ -6,6 +6,8 @@ from shutil import rmtree
 import traceback
 from datetime import datetime
 import platform
+import urllib.request
+import urllib.error
 
 # 跨平台 getch 实现
 def getch():
@@ -52,8 +54,28 @@ try:
         
     print(f"Malody to osu!mania Converter v{version}")
     print(date)
-    print("original by Jakads\n")
-    print("modified by Eric Zhao using Claude Opus 4.5\n")
+    print("original by Jakads")
+    print("modified by Eric Zhao using Claude Opus 4.5")
+    
+    # 版本检测
+    print("\n(i) Checking for updates...")
+    try:
+        with urllib.request.urlopen(
+            'https://raw.githubusercontent.com/ZHAO20060708/malody2osu/master/version.txt',
+            timeout=5
+        ) as response:
+            latest = response.read().decode('utf-8').strip()
+        if latest != version:
+            print(f"[!] New version available: v{latest} (current: v{version})")
+            print("[!] Please visit the repository to download the latest version.")
+            print("[!] Repository: https://github.com/ZHAO20060708/malody2osu")
+        else:
+            print("[O] You are using the latest version.")
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
+        print(f"[!] Could not check for updates: {e}")
+    except Exception as e:
+        print(f"[!] Update check failed: {e}")
+    print()
     
     def choose():
         choice = getch().decode()
@@ -65,61 +87,6 @@ try:
         
         else:
             return 1
-    
-    """
-    if len(sys.argv) > 1 and sys.argv[1] == '--:update': #added ":" to disallow user to view this message by dragging in files
-    #checks the first condition first so it will not give IndexError
-        if os.path.isfile(sys.argv[2]):
-            os.remove(sys.argv[2])
-        else:
-            print(f'[X] Failed to remove the temporary batch file({sys.argv[2]}). Please remove it manually. This message is not supposed to be shown.\n')
-        print(f"[O] Successfully updated to v{version}! :D\n[!] Would you like to check out the changelog? (Y/N)\n")
-        if choose():
-            webbrowser.open('https://github.com/jakads/Malody-to-Osumania#changelog')
-        del sys.argv[1], sys.argv[1] #Deleting second element twice actually deletes second and third
-    
-    print("(i) Checking for new updates . . .")
-    try:
-        latest = requests.get('https://github.com/jakads/Malody-to-Osumania/raw/master/version.txt')
-        latest.raise_for_status()
-        print(f"\n(i) Latest Version = v{latest.text}")
-    
-        if latest.text != version:
-            print("\n[!] New update is available! Would you like to download? (Y/N)")
-            if not choose():
-                print("(i) Skipping the update.\n\n")
-    
-            else:
-                print("(i) Downloading . . .")
-                exe = requests.get("https://github.com/jakads/Malody-to-Osumania/raw/master/convert.exe", stream=True)
-                exe.raise_for_status()
-                total = int(exe.headers.get('content-length'))
-                progress = tqdm(total=total, unit='B', unit_scale=True, unit_divisor=1024, ncols=80) #https://github.com/tqdm/tqdm/wiki/How-to-make-a-great-Progress-Bar
-                rand=''.join(random.choice(string.ascii_letters + string.digits) for i in range(16)) #https://pynative.com/python-generate-random-string/
-                filename=os.path.basename(sys.executable)
-                with open(f"{rand}.exe", 'wb') as f: #https://stackoverflow.com/questions/37573483
-                    for chunk in exe.iter_content(chunk_size=8192):
-                        if chunk:
-                            progress.update(8192)
-                            f.write(chunk)
-                with open(f'{rand}.bat', 'w', encoding='utf-8') as f:
-                    f.write('\n'.join(['@echo off',
-                                       'echo (i) Restarting . . .',
-                                       "echo (i) All the files you've dragged in will be converted very soon!",
-                                       'timeout /t 5 /nobreak >nul',
-                                       f'del "{filename}"',
-                                       f'rename {rand}.exe "{filename}"',
-                                       'cls',
-                                       '"{0}" --:update {1}.bat {2}'.format(filename, rand, ' '.join(f'"{file}\"' for file in sys.argv[1:]) if len(sys.argv)>1 else '')])) #https://stackoverflow.com/questions/12007686
-                os.startfile(f'{rand}.bat')
-                sys.exit()
-                
-        else:
-            print("\n[O] Your program is as good as new! We're good to go.\n\n")
-    except Exception as e:
-        print("\n[!] Error while connecting:", e)
-        print("\n[!] Connection to GitHub failed. Will just continue...\n\n")
-    """
         
     def recursive_file_gen(mydir):
         for root, dirs, files in os.walk(mydir):
@@ -317,6 +284,16 @@ try:
             compressname = os.path.join(dir_part, name_part)
         else:
             compressname = name_part
+        
+        # 检查文件是否已存在，如果存在则添加后缀
+        original_name = compressname
+        suffix = 1
+        while os.path.isfile(f'{compressname}.osz'):
+            compressname = f'{original_name} ({suffix})'
+            suffix += 1
+        if compressname != original_name:
+            print(f'[!] {os.path.basename(original_name)}.osz already exists, saving as {os.path.basename(compressname)}.osz')
+        
         osz = zipfile.ZipFile(f'{compressname}.osz','w')
     
         for i in name:
@@ -337,14 +314,14 @@ try:
                 lastfile = f'{i} (Crashed while compressing)'
                 if os.path.isfile(i):
                     osz.write(i, os.path.basename(i))
-                    print(f'[O] Compressed: {os.path.basename(i)}\n')
+                    print(f'[O] Compressed: {os.path.basename(i)}')
                 else:
                     print(f'[!] {os.path.basename(i)} is not found and thus not compressed.')
         osz.close()
         oszname.append(f'{compressname}.osz')
     
     if len(sys.argv)<=1:
-        print("(i) Drag .mc or .mcz/.zip files into this program to convert them to .osu or .osz!")
+        print("(i) Usage: python3 convert.py <file1.mc> [file2.mcz] [file3.zip] ...")
         print("(i) Press any key to exit.")
         getch()
         sys.exit()
@@ -359,7 +336,7 @@ try:
     oszname = []
     
     mctmp = []
-    print('(i) Checking file validity . . .\n')
+    print('(i) Checking file validity . . .')
     for x in sys.argv[1:]:
         lastfile = f'{x} (Crashed while checking)'
         isMCZ = False
@@ -404,7 +381,7 @@ try:
     bglist = []
     soundlist = []
     
-    print("\n\n(i) Converting . . .\n")
+    print("\n(i) Converting . . .")
     
     #Converting to .osu (dragged .mc files)
     if MCDragged:
@@ -425,7 +402,7 @@ try:
     #Converting to .osu (dragged .mcz/.zip files)
     if ZIPDragged:
         for folder in zipname:
-            print(f'\n\n(i) Converting {os.path.basename(folder)} . . .\n')
+            print(f'\n(i) Converting {os.path.basename(folder)} . . .')
             c=0
             bgtmp = []
             soundtmp = []
@@ -450,10 +427,12 @@ try:
         getch()
         sys.exit()
     
-    print('\n\n(i) All the supported .mc files have been converted to .osu!\n(i) Either close the program now and move the files manually,\n(i) or press Enter to compress all into .osz.')
+    print('\n(i) All the supported .mc files have been converted to .osu!')
+    print('(i) Either close the program now and move the files manually,')
+    print('(i) or press Enter to compress all into .osz.')
     getch()
     
-    print('\n\n\n(i) Compressing  . . .\n')
+    print('\n(i) Compressing . . .')
     #Compress to .osz (dragged .mc files as single mapset)
     if MCDragged:
         # 输出到第一个 mc 文件所在的目录
@@ -464,7 +443,7 @@ try:
     if ZIPDragged:
         i = 1 if MCDragged else 0
         for folder in zipname:
-            print(f'\n(i) Compressing {os.path.basename(folder)} . . .\n')
+            print(f'\n(i) Compressing {os.path.basename(folder)} . . .')
             # 输出到原始 mcz/zip 文件所在的目录（即解压目录的父目录）
             output_dir = os.path.dirname(folder)
             output_path = os.path.join(output_dir, os.path.basename(folder))
@@ -472,10 +451,10 @@ try:
             i+=1
             rmtree(folder)
     
-    print('\n(i) The following .osz files have been created! Run the files to add the maps to osu! automatically.\n')
+    print('\n(i) The following .osz files have been created! Run the files to add the maps to osu! automatically.')
     for i in oszname:
         print(f'* {i}')
-    print('\n(i) Press any key to exit.')
+    print('(i) Press any key to exit.')
     getch()
     
 except Exception as e:

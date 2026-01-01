@@ -1,96 +1,116 @@
-# Malody to osu!mania Converter
+# Malody → osu!mania Converter
 
-Converts Malody Key mode charts to osu!mania\
-Roughly coded in python by request\
-Supports all keys (4K~9K)\
-**This project is discontinued and will be merged to [VSRG-Converter](https://github.com/jakads/VSRG-Converter)**
+Convert Malody **Key mode** charts (`.mc`) to **osu!mania** (`.osu`, Mode 3), and optionally pack results into `.osz`.
 
-## How to Use
+This repository contains a single-file Python script based on the original converter by Jakads, with tweaks for cross-platform behavior (Windows/Linux/macOS) and safer output filenames.
 
-1. **Drag Key Mode .mc files or .mcz/.zip package files into the program.** This will convert all the files you dragged into .osu files in an instant. .osu files will be created right next to .mc files.
-2. You can move the files manually if wanted, but **to compress all .osu files into a mapset(.osz), hit any key.**
-3. .osz files will be created right next to the .exe. **Run the files** to add the charts to osu!.
+## Features
 
-## Disclaimer
+- Converts Malody Key mode `.mc` → osu!mania `.osu` (Mode 3)
+- Reads key count (4K–9K, etc.) from chart metadata
+- Supports multiple BPMs and time signature changes
+- Supports SV (scroll speed) effects (exported as inherited timing points)
+- Supports per-note hitsounds when present
+- Packs converted charts into `.osz` mapsets; includes BG/audio if referenced and found
 
-* This program is tested in **Windows** only. Execution in the other OS's not guaranteed.
-* **Expect bugs.** Please report if you ever experience one!
-* All the **.mc files** you have dragged in will be compressed into a **single mapset.**
-* All the **.mcz/.zip files** you have dragged in will be compressed into **seperate mapsets.** A mapset per file.
-* In case of negative SVs, absolute value of the SV value is used for conversion.
-* Bare in mind that osu!mania can only interpret SV values between 0.01x and 10x, and any values outside the range are adjusted to 0.01x or 10x by client.\
-This might cause some unexpected and possibly disappointing consequences, such as some SV gimmicks in Malody not being converted properly to osu!mania.
+## Requirements
 
-## Changelog
+- Python 3.x
+- No third-party dependencies
 
-### **vFinal** (v1.4)
+## Usage
 
-* **Final Version, discontinued**
-* Support custom hitsounds
-* Support SVs
-  * In case of negative SVs, absolute value of the SV value is converted.
-* Source code improvements
-* Removed auto-update feature, faster loading
-* Miscellaneous visual fixes
-* Bug fixes
-  * [#10](https://github.com/jakads/Malody-to-Osumania/issues/10) - The whole tree of converted files are compressed in .osz
-  * [#11](https://github.com/jakads/Malody-to-Osumania/issues/11) - Doesn't accept .zip files
-  * [#12](https://github.com/jakads/Malody-to-Osumania/issues/12) - "Target File" is not specified in the crash reports
+```bash
+python3 convert.py /path/to/chart.mc [/path/to/pack.mcz] [/path/to/pack.zip]
+```
 
-### v1.3.2
+The script will:
 
-* Exports a crash traceback log file upon crash
-* Faster download speed by using 8KB chunks instead of 4KB
-* Bug fixes
-  * [#8](https://github.com/jakads/Malody-to-Osumania/issues/8) - sys.argv Not Delivered Properly Midst of an Update
-  * Temporary batch file fails to pass arguments to the updated .exe file
-  * v1.3.2.1 : Fails to create a new batch file if the arguments contain UTF-8 characters
+1. Convert supported `.mc` charts to `.osu` next to the `.mc` files.
+2. Wait for a key press, then compress into `.osz`.
 
-### v1.3.1
+Notes:
 
-* Added window title
-* Typo, whoops
-* Bug fixes
-  * Updating fails if the original .exe has a whitespace in its name
+- Directories are ignored.
+- Unsupported file types are ignored.
+- `.mcz` is treated as a zip container and extracted before conversion.
 
-### v1.3
+## Output behavior
 
-* [#4](https://github.com/jakads/Malody-to-Osumania/issues/4) - __**Supports multiple BPMs**__
-* Supports time signature changes
-* Exports offsets of timing points as floats instead of integers for better accuracy
-  * Offset of notes are still exported as integers since osu cannot read it properly
-* **Displays error message instead of just crashing**
-  * Please report if this ever happens!
-* Added .exe details
-* New program icon by [@Nakaisu1](https://twitter.com/Nakaisu1)
-* Bug fixes
-  * [#6](https://github.com/jakads/Malody-to-Osumania/issues/6) - If the target .osu already exists, it adds to it instead of overwriting it
-  * [#5](https://github.com/jakads/Malody-to-Osumania/issues/5) - Crashes when the BG and Audio file specified in .mc file is not found
-  * Randomly crashes while compressing
+### `.osu`
 
-### v1.2.1
+For each converted `.mc`, an `.osu` file is written next to it:
 
-* This update partially is to check if the auto-download feature implemented in v1.2 works as intended.
-* Better wording (Press any key to turn off the program. → Press any key to exit.)
-* Opens this page(changelog) after finishing update
-* Bug fixes
-  * [#3](https://github.com/jakads/Malody-to-Osumania/issues/3) - Unable to deny the update
+- `some_chart.mc` → `some_chart.osu`
 
-### v1.2
+### `.osz`
 
-* **Downloads new .exe automatically and then replaces the current one after detecting available update**
-* Bug fixes
-  * Can't detect files with uppercase extensions (e.g. '.MC', '.MCZ', '.ZIP')
+After conversion, press a key to start packing.
 
-### v1.1
+#### If you pass `.mc` files
 
-* **Automatically ignores unsupported files**
-* **Supports .mcz/.zip files**
-* Waits until user's keyboard input using msvcrt.getch() instead of waiting 7 seconds using time.sleep(7)
-* Auto-Update feature ~~(temporary, might make it optional or create a seperate Update.exe program)~~\
-Made it optional
-* Supports multiple BG/Audio files
+- All valid `.mc` inputs are packed into **one** `.osz` mapset.
+- Output directory: the directory of the **first** `.mc` file.
+- Output filename: `<Artist> - <Title>.osz`.
 
-### v1.0
+#### If you pass `.mcz` / `.zip` files
 
-* **Initial Release**
+- Each package becomes **one** `.osz` mapset.
+- Output directory: next to the extracted folder (i.e. the original archive’s directory).
+- Output filename: `<package_filename>.osz`.
+- The extracted folder is removed after packing.
+
+#### Filename sanitization & collision handling
+
+- Output `.osz` filenames are sanitized for illegal characters.
+- If the target `.osz` already exists, the script saves as `name (1).osz`, `name (2).osz`, etc.
+
+## Version check
+
+On startup, the script checks for updates from GitHub. If a newer version is available, it will print a notice. This check requires an internet connection and times out after 5 seconds.
+
+## Notes / limitations
+
+- Only **Key mode** charts are supported (`meta.mode == 0`). Other modes are skipped.
+- If background/audio files referenced by the chart are missing, packing continues and prints a warning.
+- SV conversion uses Malody scroll values; extreme values may not behave as expected in osu!mania.
+- osu!mania effectively interprets SV in the range **0.01x to 10x**; values outside this range are clamped by the client.
+
+## Troubleshooting
+
+### Crash logs
+
+If the script crashes, it writes a log file named `CrashLog_YYYYMMDDHHMMSS.log` in the current working directory, including a traceback and the last file being processed.
+
+## Credits
+
+- Original converter: Jakads
+- This fork/modification: Eric Zhao
+
+<details>
+<summary>中文说明</summary>
+
+## 简介
+
+将 Malody 的 **Key 模式**谱面（`.mc`）转换为 osu!mania 的 `.osu`（Mode 3），并可在转换完成后打包为 `.osz`。
+
+## 用法
+
+```bash
+python3 convert.py /path/to/chart.mc [/path/to/pack.mcz] [/path/to/pack.zip]
+```
+
+## 输出规则
+
+- `.osu`：与对应 `.mc` 同目录生成同名 `.osu`。
+- `.osz`：转换结束后按任意键开始打包。
+  - 传入多个 `.mc`：合并打包为一个 `.osz`，输出到**第一个** `.mc` 所在目录，文件名为 `<Artist> - <Title>.osz`。
+  - 传入 `.mcz/.zip`：每个包单独生成一个 `.osz`，文件名为包名；打包后会删除解压目录。
+
+## 其他
+
+- 启动时会自动检查 GitHub 上的最新版本（超时 5 秒）。
+- 输出文件名会做非法字符清理；若同名 `.osz` 已存在，会自动追加 `(1)`, `(2)` 后缀避免覆盖。
+- 程序崩溃会在当前工作目录生成 `CrashLog_YYYYMMDDHHMMSS.log`。
+
+</details>
