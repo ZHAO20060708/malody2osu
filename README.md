@@ -1,5 +1,8 @@
 # Malody → osu!mania Converter
 
+> [!NOTE]
+> This repository is a personally maintained fork of [Jakads/malody2osu](https://github.com/Jakads/malody2osu). It retains the original conversion approach while carrying local cross-platform and output-safety adjustments. Refer to the upstream repository for the original implementation history.
+
 Convert Malody **Key mode** charts (`.mc`) to **osu!mania** (`.osu`, Mode 3), and optionally pack results into `.osz`.
 
 This repository contains a single-file Python script based on the original converter by Jakads, with tweaks for cross-platform behavior (Windows/Linux/macOS) and safer output filenames.
